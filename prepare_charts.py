@@ -95,7 +95,7 @@ length = returns[20].shape[0]
 
 charts = []
 
-for skip_time_percent in (0, 20, 40, 60, 80):
+for skip_time_percent in (0, 10, 20, 30, 40, 50, 60, 70, 80):
 
     row = []
 
@@ -122,6 +122,7 @@ for skip_time_percent in (0, 20, 40, 60, 80):
                 y=alt.X(
                     'percent_with_lower_return:Q',
                     title=f'% of years with lower returns starting from {first_date}'),
+                tooltip=['return_percent:Q', 'percent_with_lower_return:Q']
             )
 
         row.append(returns_chart)

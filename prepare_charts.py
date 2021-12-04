@@ -86,26 +86,46 @@ def gather_average_compount_returns(data, start_from, years):
 #    returns = gather_average_compount_returns(data, 0, years)
 #    returns.to_csv(f'returns_{years}y.csv')
 
-charts = []
+returns = {}
 
 for years in (20, 25, 30):
+    returns[years] = pd.read_csv(f'returns_{years}y.csv')
 
-    returns = pd.read_csv(f'returns_{years}y.csv')
+length = returns[20].shape[0]
 
-    returns_chart = alt.Chart(returns) \
-        .transform_joinaggregate(
-            total_count='count(*)'
-        ).transform_window(
-            cumulative_count='count()',
-            sort=[{'field': 'return_percent'}]
-        ).transform_calculate(
-            percent_with_lower_return='datum.cumulative_count / datum.total_count * 100'
-        ).mark_line(
-        ).encode(
-            x=alt.X('return_percent:Q', title=f'Nominal average compound return if investing for {years}y, %'),
-            y=alt.X('percent_with_lower_return:Q', title=f'Ratio of years with lower return, %'),
-        )
+charts = []
 
-    charts.append(returns_chart)
+for skip_time_percent in (0, 20, 40, 60, 80):
 
-alt.hconcat(*charts).save('returns.html')
+    row = []
+
+    for years in (20, 25, 30):
+
+        start = length * skip_time_percent // 100
+        returns_sliced = returns[years][start:]
+        first_date = returns_sliced.at[start, 'first_date']
+
+        returns_chart = alt.Chart(returns_sliced) \
+            .transform_joinaggregate(
+                total_count='count(*)'
+            ).transform_window(
+                cumulative_count='count()',
+                sort=[{'field': 'return_percent'}]
+            ).transform_calculate(
+                percent_with_lower_return='datum.cumulative_count / datum.total_count * 100'
+            ).mark_line(
+            ).encode(
+                x=alt.X(
+                    'return_percent:Q',
+                    title=f'Average nominal compound return if investing for {years}y, %',
+                    scale=alt.Scale(domain=[0, 20])),
+                y=alt.X(
+                    'percent_with_lower_return:Q',
+                    title=f'% of years with lower returns starting from {first_date}'),
+            )
+
+        row.append(returns_chart)
+
+    charts.append(alt.hconcat(*row))
+
+alt.vconcat(*charts).save('returns.html')

@@ -46,12 +46,9 @@ def get_data():
     })
 
 
-def calculate_returns(data, skip_rows, investment_years, initial_balance, yearly_contributions, fees_percent, tax_percent):
+def calculate_balance(data, skip_rows, investment_years, initial_balance, annual_contributions, fees_percent, tax_percent, investment_strategy):
 
     balance = initial_balance
-    balance_no_investment = initial_balance
-    balance_investment_1pct = initial_balance
-    balance_investment_3pct = initial_balance
     first_date = None
     prev_index = None
     prev_cpi = None
@@ -75,126 +72,155 @@ def calculate_returns(data, skip_rows, investment_years, initial_balance, yearly
         if this_date.month != first_date.month:
             raise Exception(f'Current month ({this_date}) is not the same as the first month ({first_date})')
 
-        stocks_at_year_start = balance / prev_index
-        stocks_at_year_end = stocks_at_year_start + yearly_contributions / index
-        my_dividend = stocks_at_year_end * dividend
-        my_dividend_post_tax = my_dividend * (1 - tax_percent / 100)
-        balance_not_adjusted_to_inflation = stocks_at_year_end * index * (100 - fees_percent) / 100 + my_dividend_post_tax
-        balance = balance_not_adjusted_to_inflation * cpi / prev_cpi
-
-        balance_no_investment += yearly_contributions
-        balance_no_investment *= cpi / prev_cpi
-
-        balance_investment_1pct += yearly_contributions
-        balance_investment_1pct *= 1.01
-        balance_investment_1pct *= cpi / prev_cpi
-
-        balance_investment_3pct += yearly_contributions
-        balance_investment_3pct *= 1.03
-        balance_investment_3pct *= cpi / prev_cpi
+        balance = investment_strategy(
+            balance, annual_contributions, fees_percent, tax_percent, prev_index, index, dividend, prev_cpi, cpi)
 
         prev_index = index
         prev_cpi = cpi
 
-    return dict(
-        first_date=first_date,
-        final_balance=balance,
-        final_balance_no_investment=balance_no_investment,
-        final_balance_investment_1pct=balance_investment_1pct,
-        final_balance_investment_3pct=balance_investment_3pct,
-    )
+    return dict(first_date=first_date, final_balance=balance)
 
 
-def gather_returns(data, start_from, investment_years, initial_balance, yearly_contributions, fees_percent, tax_percent):
-    return pd.DataFrame(
-        calculate_returns(data, i, investment_years, initial_balance, yearly_contributions, fees_percent, tax_percent)
-        for i in range(((data.shape[0] - start_from) // 12 - investment_years) * 12)
-    )
+def gather_balances(
+    data, investment_strategies, start_from, investment_years, initial_balance, annual_contributions, fees_percent, tax_percent):
+
+    print(f'gathering balances for investment years {investment_years}')
+
+    balances = []
+    for investment_strategy, investment_strategy_label in investment_strategies:
+        print(f'  processing strategy {investment_strategy_label}')
+        for i in range(((data.shape[0] - start_from) // 12 - investment_years) * 12):
+            balance_dict = calculate_balance(
+                data, i, investment_years, initial_balance, annual_contributions, fees_percent, tax_percent, investment_strategy)
+            balance_dict['investment_strategy'] = investment_strategy_label
+            balances.append(balance_dict)
+
+    return pd.DataFrame(balances)
 
 
 def prepare_charts(
-    initial_balance=100, yearly_contributions=20, fees_percent=0.07, tax_percent=15,
-    investment_years_options=(20, 25, 30), skip_time_percent_options=(0, 10, 20, 30, 40, 50, 60, 70, 80)):
+    investment_strategies,
+    initial_balance=100, annual_contributions=20, fees_percent=0.07, tax_percent=15,
+    investment_years_options=(20, 25, 30),
+    skip_time_percent_options=(0, 20, 40, 60, 80)):
 
     data = get_data()
 
-    for investment_years in investment_years_options:
-        returns = gather_returns(data, 0, investment_years, initial_balance, yearly_contributions, fees_percent, tax_percent)
-        returns.to_csv(f'balance_{investment_years}y.csv')
+    length = data.shape[0]
+    start_date_options = []
+    for skip_time_percent in skip_time_percent_options:
+        start_index = length * skip_time_percent // 100
+        start_date = data.at[start_index, 'date']
+        start_date_options.append(start_date)
 
-    returns = {}
+    balances_all = {}
 
-    for investment_years in investment_years_options:
-        returns[investment_years] = pd.read_csv(f'balance_{investment_years}y.csv')
+    write_data = True
+    #write_data = False
 
-    length = returns[investment_years_options[0]].shape[0]
+    if write_data:
+        for investment_years in investment_years_options:
+            balances = gather_balances(data, investment_strategies, 0, investment_years, initial_balance, annual_contributions, fees_percent, tax_percent)
+            balances.to_csv(f'balance_{investment_years}y.csv')
+            balances_all[investment_years] = balances
+    else:
+        for investment_years in investment_years_options:
+            balances_all[investment_years] = \
+                pd.read_csv(f'balance_{investment_years}y.csv').astype({'first_date': 'datetime64[ns]'})
 
     charts = []
 
-    for skip_time_percent in skip_time_percent_options:
+    print('preparing charts')
+
+    for start_date in start_date_options:
 
         row = []
 
         for investment_years in investment_years_options:
 
-            start = length * skip_time_percent // 100
-            returns_sliced = returns[investment_years][start:]
-            first_date = returns_sliced.at[start, 'first_date']
+            balances_for_investment_years = balances_all[investment_years]
+            balances_sliced = balances_for_investment_years[balances_for_investment_years['first_date'] > start_date]
 
-            balance_chart = None
+            if balances_sliced.shape[0] == 0:
+                continue
 
-            for color, field in [
-                ('darkblue', 'final_balance'),
-                ('red', 'final_balance_no_investment'),
-                ('orange', 'final_balance_investment_1pct'),
-                ('green', 'final_balance_investment_3pct')]:
+            color = alt.Color('investment_strategy', title='Investment strategy')
 
-                temp_chart = alt.Chart(returns_sliced) \
-                    .mark_line(
-                        clip=True,
-                        color=color
-                    ).transform_joinaggregate(
-                        total_count='count(*)'
-                    ).transform_window(
-                        cumulative_count='count()',
-                        sort=[{'field': field}]
-                    ).transform_calculate(
-                        percent_of_years_with_lower_balance='datum.cumulative_count / datum.total_count * 100'
-                    ).encode(
-                        x=alt.X(
-                            field + ':Q',
-                            title='Final balance',
-                            scale=alt.Scale(type='log')
-                        ),
-                        y=alt.X(
-                            'percent_of_years_with_lower_balance:Q',
-                            title=f'% of years with lower final balance if investing for {investment_years}y',
-                            scale=alt.Scale(domain=[0, 100])
-                        ),
-                        tooltip=[field + ':Q', 'percent_of_years_with_lower_balance:Q']
-                    )
-
-                if not balance_chart:
-                    balance_chart = temp_chart
-                else:
-                    balance_chart += temp_chart
+            balance_chart = alt.Chart(balances_sliced) \
+                .mark_line(
+                    clip=True
+                ).transform_joinaggregate(
+                    total_count='count(*)',
+                    groupby=['investment_strategy']
+                ).transform_window(
+                    cumulative_count='count()',
+                    sort=[{'field': 'final_balance'}],
+                    groupby=['investment_strategy']
+                ).transform_calculate(
+                    percent_of_years_with_lower_balance='datum.cumulative_count / datum.total_count * 100'
+                ).encode(
+                    x=alt.X(
+                        'final_balance:Q',
+                        title='Final balance',
+                        scale=alt.Scale(type='log')
+                    ),
+                    y=alt.X(
+                        'percent_of_years_with_lower_balance:Q',
+                        title=f'% of years with lower final balance if investing for {investment_years}y',
+                        scale=alt.Scale(domain=[0, 100])
+                    ),
+                    color=color,
+                    strokeWidth=alt.condition(
+                        "datum.investment_strategy == 'boglehead'",
+                        alt.value(2),
+                        alt.value(1)
+                    ),
+                    tooltip=['final_balance:Q', 'percent_of_years_with_lower_balance:Q', 'investment_strategy']
+                )
 
             row.append(balance_chart)
 
         charts.append(
             alt
                 .hconcat(*row)
-                .properties(title=f'Data for analysis starting from {first_date}')
+                .properties(title=f'Data for analysis starting from {start_date}')
         )
 
     alt \
         .vconcat(*charts) \
         .properties(
             title=
-                'Likelihood of getting particular final balance if investing for different number of years. '
-                f'Initial balance is {initial_balance}, yearly contributions are {yearly_contributions}, fees are {fees_percent}%, tax rate is {tax_percent}%.'
+                'Likelihood of getting particular final balance adjusted to inflation if investing for different number of years. '
+                f'Initial balance is {initial_balance}, annual contributions are {annual_contributions}, fees are {fees_percent}%, tax rate is {tax_percent}%.'
         ) \
         .save('returns.html')
 
 
-prepare_charts()
+def boglehead_strategy(balance, annual_contributions, fees_percent, tax_percent, prev_index, index, dividend, prev_cpi, cpi):
+    stocks_at_year_start = balance / prev_index
+    stocks_at_year_end = stocks_at_year_start + annual_contributions / index
+    my_dividend = stocks_at_year_end * dividend
+    my_dividend_post_tax = my_dividend * (1 - tax_percent / 100)
+    balance_not_adjusted_to_inflation = stocks_at_year_end * index * (100 - fees_percent) / 100 + my_dividend_post_tax
+    return balance_not_adjusted_to_inflation * cpi / prev_cpi
+
+
+def fixed_percent_strategy(percent):
+    def strategy(balance, annual_contributions, fees_percent, tax_percent, prev_index, index, dividend, prev_cpi, cpi):
+        balance += annual_contributions
+        balance *= 1 + percent / 100
+        return balance * cpi / prev_cpi
+    return strategy
+
+
+investment_strategies = [
+    (boglehead_strategy, 'boglehead'),
+    (fixed_percent_strategy(0), 'cold cash only'),
+] + [
+    (fixed_percent_strategy(p), f'stable {p}%') for p in (2, 4, 6)
+]
+
+prepare_charts(
+    investment_strategies,
+    initial_balance=100, annual_contributions=20, fees_percent=0.07, tax_percent=15
+)

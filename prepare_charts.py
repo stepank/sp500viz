@@ -48,7 +48,8 @@ def get_data():
     })
 
 
-def calculate_balance(data, skip_rows, investment_years, initial_balance, annual_contributions, fees_percent, tax_percent, investment_strategy):
+def calculate_balance(
+    data, skip_rows, investment_years, initial_balance, annual_contributions, fees_percent, dividend_tax_rate_percent, investment_strategy):
 
     balance = initial_balance
     first_date = None
@@ -75,7 +76,7 @@ def calculate_balance(data, skip_rows, investment_years, initial_balance, annual
             raise Exception(f'Current month ({this_date}) is not the same as the first month ({first_date})')
 
         balance = investment_strategy(
-            balance, annual_contributions, fees_percent, tax_percent, prev_index, index, dividend, prev_cpi, cpi)
+            balance, annual_contributions, fees_percent, dividend_tax_rate_percent, prev_index, index, dividend, prev_cpi, cpi)
 
         prev_index = index
         prev_cpi = cpi
@@ -84,7 +85,7 @@ def calculate_balance(data, skip_rows, investment_years, initial_balance, annual
 
 
 def gather_balances(
-    data, investment_strategies, start_from, investment_years, initial_balance, annual_contributions, fees_percent, tax_percent):
+    data, investment_strategies, start_from, investment_years, initial_balance, annual_contributions, fees_percent, dividend_tax_rate_percent):
 
     print(f'gathering balances for investment years {investment_years}')
 
@@ -93,7 +94,7 @@ def gather_balances(
         print(f'  processing strategy {investment_strategy_label}')
         for i in range(((data.shape[0] - start_from) // 12 - investment_years) * 12):
             balance_dict = calculate_balance(
-                data, i, investment_years, initial_balance, annual_contributions, fees_percent, tax_percent, investment_strategy)
+                data, i, investment_years, initial_balance, annual_contributions, fees_percent, dividend_tax_rate_percent, investment_strategy)
             balance_dict['investment_strategy'] = investment_strategy_label
             balances.append(balance_dict)
 
@@ -101,7 +102,7 @@ def gather_balances(
 
 
 def prepare_charts(
-    investment_strategies, initial_balance, annual_contributions, fees_percent, tax_percent,
+    investment_strategies, initial_balance, annual_contributions, fees_percent, dividend_tax_rate_percent,
     investment_years_options, skip_time_percent_options):
 
     data = get_data()
@@ -120,7 +121,8 @@ def prepare_charts(
 
     if write_data:
         for investment_years in investment_years_options:
-            balances = gather_balances(data, investment_strategies, 0, investment_years, initial_balance, annual_contributions, fees_percent, tax_percent)
+            balances = gather_balances(
+                data, investment_strategies, 0, investment_years, initial_balance, annual_contributions, fees_percent, dividend_tax_rate_percent)
             balances.to_csv(f'balance_{investment_years}y.csv')
             balances_all[investment_years] = balances
     else:
@@ -191,22 +193,23 @@ def prepare_charts(
         .properties(
             title=
                 'Likelihood of getting particular final balance adjusted to inflation if investing for different number of years. '
-                f'Initial balance is {initial_balance}, annual contributions are {annual_contributions}, fees are {fees_percent}%, tax rate is {tax_percent}%.'
+                f'Initial balance is {initial_balance}, annual contributions are {annual_contributions}, '
+                f'fees are {fees_percent}%, dividend tax rate is {dividend_tax_rate_percent}%.'
         ) \
         .save('returns.html')
 
 
-def boglehead_strategy(balance, annual_contributions, fees_percent, tax_percent, prev_index, index, dividend, prev_cpi, cpi):
+def boglehead_strategy(balance, annual_contributions, fees_percent, dividend_tax_rate_percent, prev_index, index, dividend, prev_cpi, cpi):
     stocks_at_year_start = balance / prev_index
     stocks_at_year_end = stocks_at_year_start + annual_contributions / index
     my_dividend = stocks_at_year_end * dividend
-    my_dividend_post_tax = my_dividend * (1 - tax_percent / 100)
+    my_dividend_post_tax = my_dividend * (1 - dividend_tax_rate_percent / 100)
     balance_not_adjusted_to_inflation = stocks_at_year_end * index * (100 - fees_percent) / 100 + my_dividend_post_tax
     return balance_not_adjusted_to_inflation * prev_cpi / cpi
 
 
 def fixed_percent_strategy(percent):
-    def strategy(balance, annual_contributions, fees_percent, tax_percent, prev_index, index, dividend, prev_cpi, cpi):
+    def strategy(balance, annual_contributions, fees_percent, dividend_tax_rate_percent, prev_index, index, dividend, prev_cpi, cpi):
         balance += annual_contributions
         balance *= 1 + percent / 100
         return balance * prev_cpi / cpi
@@ -224,7 +227,7 @@ parameters=dict(
     initial_balance=100,
     annual_contributions=20,
     fees_percent=0.07,
-    tax_percent=15,
+    dividend_tax_rate_percent=15,
     investment_years_options=(20, 25, 30),
     skip_time_percent_options=(0, 20, 40, 60, 80)
 )

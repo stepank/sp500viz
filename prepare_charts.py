@@ -66,7 +66,7 @@ def calculate_balance(data, skip_rows, investment_years, initial_balance, annual
         if year_index == 0:
             first_date = this_date
             prev_index = index
-            prev_cpi = index
+            prev_cpi = cpi
             continue
 
         if this_date.month != first_date.month:
@@ -202,14 +202,14 @@ def boglehead_strategy(balance, annual_contributions, fees_percent, tax_percent,
     my_dividend = stocks_at_year_end * dividend
     my_dividend_post_tax = my_dividend * (1 - tax_percent / 100)
     balance_not_adjusted_to_inflation = stocks_at_year_end * index * (100 - fees_percent) / 100 + my_dividend_post_tax
-    return balance_not_adjusted_to_inflation * cpi / prev_cpi
+    return balance_not_adjusted_to_inflation * prev_cpi / cpi
 
 
 def fixed_percent_strategy(percent):
     def strategy(balance, annual_contributions, fees_percent, tax_percent, prev_index, index, dividend, prev_cpi, cpi):
         balance += annual_contributions
         balance *= 1 + percent / 100
-        return balance * cpi / prev_cpi
+        return balance * prev_cpi / cpi
     return strategy
 
 

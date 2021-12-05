@@ -19,7 +19,7 @@ Just run `run.ps1`. It will activate the virtual environment and run the simulat
 
 The simulation will do roughly the following. For every month starting from different dates, it will calculate the final balance adjusted to inflation for a portfolio fully allocated to an SP500 index fund for a few years starting from that month.
 
-The output is a greed of charts. Each chart shows the likelihood (based on historical data) of reaching certain balance depending on how long the portfolio is kept invested. The axes are:
+The output is a greed of charts in the `returns.html` file. Each chart shows the likelihood (based on historical data) of reaching certain balance depending on how long the portfolio is kept invested. The axes are:
 * X - final balance,
 * Y - percent of starting years that had lower final balance.
 

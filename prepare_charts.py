@@ -1,6 +1,8 @@
 import altair as alt
 import csv
 import datetime as dt
+import json
+import os
 import pandas as pd
 
 
@@ -99,10 +101,8 @@ def gather_balances(
 
 
 def prepare_charts(
-    investment_strategies,
-    initial_balance=100, annual_contributions=20, fees_percent=0.07, tax_percent=15,
-    investment_years_options=(20, 25, 30),
-    skip_time_percent_options=(0, 20, 40, 60, 80)):
+    investment_strategies, initial_balance, annual_contributions, fees_percent, tax_percent,
+    investment_years_options, skip_time_percent_options):
 
     data = get_data()
 
@@ -220,7 +220,22 @@ investment_strategies = [
     (fixed_percent_strategy(p), f'stable {p}%') for p in (2, 4, 6)
 ]
 
+parameters=dict(
+    initial_balance=100,
+    annual_contributions=20,
+    fees_percent=0.07,
+    tax_percent=15,
+    investment_years_options=(20, 25, 30),
+    skip_time_percent_options=(0, 20, 40, 60, 80)
+)
+
+external_parameters_file_name = 'parameters.json'
+if os.path.exists(external_parameters_file_name):
+    with open(external_parameters_file_name) as json_file:
+        external_parameters = json.load(json_file)
+        parameters.update(external_parameters)
+
 prepare_charts(
     investment_strategies,
-    initial_balance=100, annual_contributions=20, fees_percent=0.07, tax_percent=15
+    **parameters
 )

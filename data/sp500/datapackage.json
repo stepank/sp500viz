@@ -1,0 +1,341 @@
+{
+  "bytes": 605680,
+  "contributors": [
+    {
+      "email": "rufus.pollock@okfn.org",
+      "role": "maintainer",
+      "title": "Rufus Pollock"
+    }
+  ],
+  "datahub": {
+    "created": "2017-11-09T00:42:42.965398",
+    "findability": "published",
+    "flowid": "core/s-and-p-500/9",
+    "modified": "2018-08-03T07:52:51.715892",
+    "owner": "core",
+    "ownerid": "core"
+  },
+  "hash": "7687f202dc89c49590ec2fb714a8bee8",
+  "id": "core/s-and-p-500",
+  "keywords": [
+    "Indicator",
+    "Economics",
+    "Prices",
+    "Stocks",
+    "Stock Market",
+    "US"
+  ],
+  "licenses": [
+    {
+      "name": "ODC-PDDL-1.0",
+      "path": "http://opendatacommons.org/licenses/pddl/",
+      "title": "Open Data Commons Public Domain Dedication and License v1.0"
+    }
+  ],
+  "name": "s-and-p-500",
+  "related": [
+    {
+      "formats": [
+        "CSV",
+        "JSON"
+      ],
+      "path": "/core/s-and-p-500-companies",
+      "publisher": "core",
+      "title": "S&P 500 Companies"
+    },
+    {
+      "formats": [
+        "CSV",
+        "JSON"
+      ],
+      "path": "/core/s-and-p-500-companies-financials",
+      "publisher": "core",
+      "title": "S&P 500 Companies with Financial Information"
+    },
+    {
+      "formats": [
+        "CSV",
+        "JSON"
+      ],
+      "path": "/core/finance-vix",
+      "publisher": "core",
+      "title": "VIX - CBOE Volatility Index"
+    },
+    {
+      "formats": [
+        "CSV",
+        "JSON"
+      ],
+      "path": "/core/nyse-other-listings",
+      "publisher": "core",
+      "title": "NYSE and Other Listings"
+    }
+  ],
+  "resources": [
+    {
+      "bytes": 108098,
+      "datahub": {
+        "type": "original"
+      },
+      "dpp:streamedFrom": "https://s3.amazonaws.com/rawstore.datahub.io/4aaedd0c17a8153bbe4f98210e775639.csv",
+      "encoding": "ISO-8859-1",
+      "format": "csv",
+      "mediatype": "text/csv",
+      "name": "data_original",
+      "path": "archive/data.csv",
+      "pathType": "local",
+      "profile": "data-resource",
+      "schema": {
+        "fields": [
+          {
+            "format": "any",
+            "name": "Date",
+            "type": "date"
+          },
+          {
+            "description": "Level ('price') of the S&P 500 index",
+            "name": "SP500",
+            "type": "number"
+          },
+          {
+            "name": "Dividend",
+            "type": "number"
+          },
+          {
+            "name": "Earnings",
+            "type": "number"
+          },
+          {
+            "name": "Consumer Price Index",
+            "type": "number"
+          },
+          {
+            "description": "10 year interest rate (gov bonds)",
+            "name": "Long Interest Rate",
+            "type": "number"
+          },
+          {
+            "name": "Real Price",
+            "type": "number"
+          },
+          {
+            "name": "Real Dividend",
+            "type": "number"
+          },
+          {
+            "name": "Real Earnings",
+            "type": "number"
+          },
+          {
+            "description": "Cyclically Adjusted Price Earnings Ratio P/E10 or CAPE",
+            "name": "PE10",
+            "type": "number"
+          }
+        ]
+      }
+    },
+    {
+      "bytes": 690,
+      "datahub": {
+        "type": "derived/report"
+      },
+      "description": "Validation report for tabular data",
+      "dpp:streamedFrom": "/tmp/tmp5iqn5jzd/core/s-and-p-500/validation_report/data/07345d1b9f774e02332c3c0041649369/validation_report.json",
+      "format": "json",
+      "hash": "07345d1b9f774e02332c3c0041649369",
+      "name": "validation_report",
+      "path": "data/validation_report.json",
+      "profile": "data-resource"
+    },
+    {
+      "bytes": 109867,
+      "datahub": {
+        "derivedFrom": [
+          "data"
+        ],
+        "type": "derived/csv"
+      },
+      "dialect": {
+        "delimiter": ",",
+        "doubleQuote": true,
+        "lineTerminator": "\r\n",
+        "quoteChar": "\"",
+        "skipInitialSpace": false
+      },
+      "dpp:streamedFrom": "/tmp/tmp5iqn5jzd/core/s-and-p-500/data_csv/data/4aaedd0c17a8153bbe4f98210e775639/data_csv.csv",
+      "encoding": "utf-8",
+      "format": "csv",
+      "hash": "4aaedd0c17a8153bbe4f98210e775639",
+      "mediatype": "text/csv",
+      "name": "data_csv",
+      "path": "data/data_csv.csv",
+      "pathType": "local",
+      "profile": "data-resource",
+      "rowcount": 1768,
+      "schema": {
+        "fields": [
+          {
+            "format": "%Y-%m-%d",
+            "name": "Date",
+            "type": "date"
+          },
+          {
+            "decimalChar": ".",
+            "description": "Level ('price') of the S&P 500 index",
+            "groupChar": "",
+            "name": "SP500",
+            "type": "number"
+          },
+          {
+            "decimalChar": ".",
+            "groupChar": "",
+            "name": "Dividend",
+            "type": "number"
+          },
+          {
+            "decimalChar": ".",
+            "groupChar": "",
+            "name": "Earnings",
+            "type": "number"
+          },
+          {
+            "decimalChar": ".",
+            "groupChar": "",
+            "name": "Consumer Price Index",
+            "type": "number"
+          },
+          {
+            "decimalChar": ".",
+            "description": "10 year interest rate (gov bonds)",
+            "groupChar": "",
+            "name": "Long Interest Rate",
+            "type": "number"
+          },
+          {
+            "decimalChar": ".",
+            "groupChar": "",
+            "name": "Real Price",
+            "type": "number"
+          },
+          {
+            "decimalChar": ".",
+            "groupChar": "",
+            "name": "Real Dividend",
+            "type": "number"
+          },
+          {
+            "decimalChar": ".",
+            "groupChar": "",
+            "name": "Real Earnings",
+            "type": "number"
+          },
+          {
+            "decimalChar": ".",
+            "description": "Cyclically Adjusted Price Earnings Ratio P/E10 or CAPE",
+            "groupChar": "",
+            "name": "PE10",
+            "type": "number"
+          }
+        ]
+      },
+      "signed": true
+    },
+    {
+      "bytes": 384314,
+      "datahub": {
+        "derivedFrom": [
+          "data"
+        ],
+        "type": "derived/json"
+      },
+      "dpp:streamedFrom": "/tmp/tmp5iqn5jzd/core/s-and-p-500/data_json/data/6c7a281b2a5a3fdd0f2bb059d19c1af5/data_json.json",
+      "encoding": "utf-8",
+      "format": "json",
+      "hash": "6c7a281b2a5a3fdd0f2bb059d19c1af5",
+      "mediatype": "text/csv",
+      "name": "data_json",
+      "path": "data/data_json.json",
+      "pathType": "local",
+      "profile": "data-resource",
+      "rowcount": 1768,
+      "schema": {
+        "fields": [
+          {
+            "format": "%Y-%m-%d",
+            "name": "Date",
+            "type": "date"
+          },
+          {
+            "description": "Level ('price') of the S&P 500 index",
+            "name": "SP500",
+            "type": "number"
+          },
+          {
+            "name": "Dividend",
+            "type": "number"
+          },
+          {
+            "name": "Earnings",
+            "type": "number"
+          },
+          {
+            "name": "Consumer Price Index",
+            "type": "number"
+          },
+          {
+            "description": "10 year interest rate (gov bonds)",
+            "name": "Long Interest Rate",
+            "type": "number"
+          },
+          {
+            "name": "Real Price",
+            "type": "number"
+          },
+          {
+            "name": "Real Dividend",
+            "type": "number"
+          },
+          {
+            "name": "Real Earnings",
+            "type": "number"
+          },
+          {
+            "description": "Cyclically Adjusted Price Earnings Ratio P/E10 or CAPE",
+            "name": "PE10",
+            "type": "number"
+          }
+        ]
+      },
+      "signed": true
+    },
+    {
+      "bytes": 2711,
+      "dpp:streamedFrom": "/tmp/tmpd6h4nzgg/README.md",
+      "format": "md",
+      "name": "readme",
+      "path": "README.md"
+    }
+  ],
+  "sources": [
+    {
+      "name": "Robert Shiller",
+      "path": "http://www.econ.yale.edu/~shiller/data.htm",
+      "title": "Robert Shiller"
+    }
+  ],
+  "title": "Standard and Poor's (S&P) 500 Index Data including Dividend, Earnings and P/E Ratio",
+  "views": [
+    {
+      "name": "graph",
+      "spec": {
+        "group": "Date",
+        "series": [
+          "SP500"
+        ],
+        "type": "line"
+      },
+      "specType": "simple",
+      "title": "Level ('price') of the S&P 500 index"
+    }
+  ]
+}

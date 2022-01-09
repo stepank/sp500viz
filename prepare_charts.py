@@ -1,10 +1,10 @@
 import altair as alt
 import csv
 import datetime as dt
-import json
-import math
-import os
 import pandas as pd
+import parameters
+
+from invesment_strategies import InvestmentStrategyState
 
 
 def get_data():
@@ -112,27 +112,6 @@ def get_data():
         'vbmfx_price': column_vbmfx_price,
         'vbmfx_dividend': column_vbmfx_dividend,
     })
-
-
-class InvestmentStrategyState:
-
-    def __init__(
-        self,
-        balance, annual_contributions,
-        fees_percent, dividend_tax_rate_percent):
-        self.requires_initialization = True
-        self.balance = balance
-        self.annual_contributions = annual_contributions
-        self.fees_percent = fees_percent
-        self.dividend_tax_rate_percent = dividend_tax_rate_percent
-        self.sp500_count = 0
-        self.vbmfx_count = 0
-        self.prev_sp500_index = None
-        self.sp500_index = None
-        self.sp500_dividend = None
-        self.prev_vbmfx_price = None
-        self.vbmfx_price = None
-        self.vbmfx_dividend = None
 
 
 def calculate_balance(
@@ -315,150 +294,6 @@ def prepare_charts(
         .save('returns.html')
 
 
-def sp500_strategy(state):
-
-    if state.requires_initialization:
-        state.sp500_count = state.balance / state.sp500_index
-        return
-
-    # dividend
-    my_dividend = state.sp500_count * state.sp500_dividend
-    my_dividend_post_tax = my_dividend * (1 - state.dividend_tax_rate_percent / 100)
-    state.sp500_count += my_dividend_post_tax / state.sp500_index
-
-    # fees
-    state.sp500_count *= (100 - state.fees_percent) / 100
-
-    # annual contributions
-    state.sp500_count += state.annual_contributions / state.sp500_index
-
-    state.balance = state.sp500_count * state.sp500_index
-
-
-def sp500_and_bonds_strategy_wo_selling(target_equities_percent):
-    def investment_strategy(state):
-
-        if math.isnan(state.vbmfx_price) or math.isnan(state.vbmfx_dividend):
-            sp500_strategy(state)
-            return
-
-        if state.requires_initialization:
-            state.sp500_count = state.balance * target_equities_percent / 100 / state.sp500_index
-            state.vbmfx_count = state.balance * (100 - target_equities_percent) / 100 / state.vbmfx_price
-            return
-
-        # dividend
-        my_sp500_dividend = state.sp500_count * state.sp500_dividend
-        my_sp500_dividend_post_tax = my_sp500_dividend * (1 - state.dividend_tax_rate_percent / 100)
-        state.sp500_count += my_sp500_dividend_post_tax / state.sp500_index
-        my_vbmfx_dividend = state.vbmfx_count * state.vbmfx_dividend
-        my_vbmfx_dividend_post_tax = my_vbmfx_dividend * (1 - state.dividend_tax_rate_percent / 100)
-        state.vbmfx_count += my_vbmfx_dividend_post_tax / state.sp500_index
-
-        # fees
-        state.sp500_count *= (100 - state.fees_percent) / 100
-        state.vbmfx_count *= (100 - state.fees_percent) / 100
-
-        # annual contributions
-        sp500_balance = state.sp500_count * state.sp500_index
-        vbmfx_balance = state.vbmfx_count * state.vbmfx_price
-        equities_percent = sp500_balance / (sp500_balance + vbmfx_balance) * 100
-        if equities_percent <= target_equities_percent:
-            state.sp500_count += state.annual_contributions / state.sp500_index
-        else:
-            state.vbmfx_count += state.annual_contributions / state.vbmfx_price
-
-        state.balance = state.sp500_count * state.sp500_index + state.vbmfx_count * state.vbmfx_price
-
-    return investment_strategy
-
-
-def sp500_and_bonds_strategy_with_selling(target_equities_percent):
-    def investment_strategy(state):
-
-        if math.isnan(state.vbmfx_price) or math.isnan(state.vbmfx_dividend):
-            sp500_strategy(state)
-            return
-
-        if state.requires_initialization:
-            state.sp500_count = state.balance * target_equities_percent / 100 / state.sp500_index
-            state.vbmfx_count = state.balance * (100 - target_equities_percent) / 100 / state.vbmfx_price
-            return
-
-        # dividend
-        my_sp500_dividend = state.sp500_count * state.sp500_dividend
-        my_sp500_dividend_post_tax = my_sp500_dividend * (1 - state.dividend_tax_rate_percent / 100)
-        state.sp500_count += my_sp500_dividend_post_tax / state.sp500_index
-        my_vbmfx_dividend = state.vbmfx_count * state.vbmfx_dividend
-        my_vbmfx_dividend_post_tax = my_vbmfx_dividend * (1 - state.dividend_tax_rate_percent / 100)
-        state.vbmfx_count += my_vbmfx_dividend_post_tax / state.sp500_index
-
-        # fees
-        state.sp500_count *= (100 - state.fees_percent) / 100
-        state.vbmfx_count *= (100 - state.fees_percent) / 100
-
-        # annual contributions
-        sp500_balance = state.sp500_count * state.sp500_index
-        vbmfx_balance = state.vbmfx_count * state.vbmfx_price
-        final_balance = sp500_balance + vbmfx_balance + state.annual_contributions
-        target_sp500_balance = final_balance * target_equities_percent / 100
-        target_vbmfx_balance = final_balance - target_sp500_balance
-
-        if target_sp500_balance <= sp500_balance:
-            state.vbmfx_count += state.annual_contributions / state.vbmfx_price
-            sell_amount = sp500_balance - target_sp500_balance
-            state.vbmfx_count += sell_amount / state.vbmfx_price
-            state.sp500_count -= sell_amount / state.sp500_index
-        elif target_vbmfx_balance <= vbmfx_balance:
-            state.sp500_count += state.annual_contributions / state.sp500_index
-            sell_amount = vbmfx_balance - target_vbmfx_balance
-            state.sp500_count += sell_amount / state.sp500_index
-            state.vbmfx_count -= sell_amount / state.vbmfx_price
-        else:
-            state.vbmfx_count += (target_vbmfx_balance - vbmfx_balance) / state.vbmfx_price
-            state.sp500_count += (target_sp500_balance - sp500_balance) / state.sp500_index
-
-        state.balance = state.sp500_count * state.sp500_index + state.vbmfx_count * state.vbmfx_price
-
-        assert state.balance - final_balance < 0.000001
-
-    return investment_strategy
-
-
-def fixed_percent_strategy(percent):
-    def strategy(state):
-        if state.requires_initialization:
-            return
-        state.balance += state.annual_contributions
-        state.balance *= 1 + percent / 100
-    return strategy
-
-
-investment_strategies = [
-    (sp500_strategy, 'sp500'),
-    (sp500_and_bonds_strategy_wo_selling(80), 'sp500 & bonds 80/20 w/o selling'),
-    (sp500_and_bonds_strategy_with_selling(80), 'sp500 & bonds 80/20 with selling, 0% capital gains tax'),
-    (fixed_percent_strategy(0), 'cold cash only'),
-] + [
-    (fixed_percent_strategy(p), f'fixed {p}%') for p in (2, 4, 6)
-]
-
-parameters=dict(
-    initial_balance=100,
-    annual_contributions=20,
-    fees_percent=0.07,
-    dividend_tax_rate_percent=15,
-    investment_years_options=(20, 25, 30),
-    skip_time_percent_options=(0, 20, 40, 60, 80)
-)
-
-external_parameters_file_name = 'parameters.json'
-if os.path.exists(external_parameters_file_name):
-    with open(external_parameters_file_name) as json_file:
-        external_parameters = json.load(json_file)
-        parameters.update(external_parameters)
-
 prepare_charts(
-    investment_strategies,
-    **parameters
+    **parameters.parameters
 )

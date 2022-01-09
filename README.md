@@ -23,11 +23,11 @@ The output is a greed of charts in the `returns.html` file. Each chart shows the
 * X - final balance,
 * Y - percent of starting years that had lower final balance.
 
-The lines on the chart represent different investment strategies. The bluish thick "boglehead" line corresponds to full allocation to an SP500 fund. Other lines correspond to hypothetical investment strategies where you get certain stable nominal return rate. They are there for comparison with the main strategy. The default are `0`, `2`, `4`, and `6%`. This cannot be configured by the configuration file (see below), but can be easily adjusted in the code in `prepare_charts.py`.
+The lines on the chart represent different investment strategies. Apart from others, there are "fixed percent" strategies, which are hypothetical investment strategies where you get certain stable nominal return rate. They are there for comparison with other real-world strategies. The default percentages are `0`, `2`, `4`, and `6%`. This can be configured in the `parameters.py` file (see below).
 
 ## Configuration
 
-The simulation can be configured by adjusting parameters in the `parameters.json` file. The parameters are:
+The simulation can be configured by adjusting parameters in the `parameters.py` file. The parameters are:
 
 1. `initial_balance` is the initial lump sum investment. The default is `100`. The currency is always USD.
 1. `annual_contributions` is how much you contribute per year. The contirbutions are always of the same size and are applied once per year. The conributions are adjusted for inflation, so if you set it to let's say `1000`, it would correspond to later contributions usually being nominally higher (save for the periods of deflation) than the actual `1000`. The default is `20`.
@@ -35,6 +35,7 @@ The simulation can be configured by adjusting parameters in the `parameters.json
 1. `dividend_tax_rate_percent` is how much taxes you have to pay every year on the dividends. The default is `15%`.
 1. `investment_years_options` is a list of options of the investment horizon. The simulation will be run for every option and the charts will include one column per option. The default is `[20, 25, 30]`, which means the simulation will be run for being invested for `20`, `25`, and `30` years.
 1. `skip_time_percent_options` is a list of % of how much data from the beginning to not take into account for the simulation. The simulation will be run for every option and the charts will include one row per option. The default is `[0, 20, 40, 60, 80]`, which correspods to running the simulation starting from the following dates: Jan 1871, Jun 1900, Nov 1929, May 1959, Oct 1988.
+1. `investment_strategies` is a list of investment strategies to compare.
 
 ## Credits
 

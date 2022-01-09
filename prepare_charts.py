@@ -4,7 +4,7 @@ import datetime as dt
 import pandas as pd
 import parameters
 
-from invesment_strategies import InvestmentStrategyState
+from simulation import AssetConfigs, SimulationRunner
 
 
 def get_data():
@@ -114,73 +114,18 @@ def get_data():
     })
 
 
-def calculate_balance(
-    data, skip_rows, investment_years,
-    initial_balance, annual_contributions,
-    fees_percent, dividend_tax_rate_percent,
-    investment_strategy):
-
-    prev_cpi = None
-
-    state = InvestmentStrategyState(
-        initial_balance, annual_contributions,
-        fees_percent, dividend_tax_rate_percent)
-
-    for year_index in range(investment_years + 1):
-
-        data_index = skip_rows + year_index * 12
-        row = data.iloc[data_index]
-
-        this_date = row['date']
-        cpi = row['cpi']
-
-        state.sp500_index = row['sp500_index']
-        state.sp500_dividend = row['sp500_dividend']
-        state.vbmfx_price = row['vbmfx_price']
-        state.vbmfx_dividend = row['vbmfx_dividend']
-
-        sp500_index = state.sp500_index
-        vbmfx_price = state.vbmfx_price
-
-        if year_index == 0:
-            first_date = this_date
-
-        if this_date.month != first_date.month:
-            raise Exception(f'Current month ({this_date}) is not the same as the first month ({first_date})')
-
-        investment_strategy(state)
-
-        if year_index == 0:
-            state.requires_initialization = False
-        else:
-            q = prev_cpi / cpi
-            state.balance *= q
-            state.sp500_count *= q
-            state.vbmfx_count *= q
-
-        prev_cpi = cpi
-        state.prev_sp500_index = sp500_index
-        state.prev_vbmfx_price = vbmfx_price
-
-    return dict(first_date=first_date, final_balance=state.balance)
-
-
 def gather_balances(
     data, investment_strategies, start_from, investment_years,
-    initial_balance, annual_contributions,
-    fees_percent, dividend_tax_rate_percent):
+    initial_balance: float, annual_contributions: float, dividend_tax_rate_percent: float, asset_configs: AssetConfigs):
 
     print(f'gathering balances for investment years {investment_years}')
 
     balances = []
+    simulation_runner = SimulationRunner(initial_balance, annual_contributions, dividend_tax_rate_percent, asset_configs)
     for investment_strategy, investment_strategy_label in investment_strategies:
         print(f'  processing strategy {investment_strategy_label}')
         for i in range(((data.shape[0] - start_from) // 12 - investment_years) * 12):
-            balance_dict = calculate_balance(
-                data, i, investment_years,
-                initial_balance, annual_contributions,
-                fees_percent, dividend_tax_rate_percent,
-                investment_strategy)
+            balance_dict = simulation_runner.run_simulation(data, i, investment_years, investment_strategy)
             balance_dict['investment_strategy'] = investment_strategy_label
             balances.append(balance_dict)
 
@@ -189,8 +134,7 @@ def gather_balances(
 
 def prepare_charts(
     investment_strategies,
-    initial_balance, annual_contributions,
-    fees_percent, dividend_tax_rate_percent,
+    initial_balance: float, annual_contributions: float, dividend_tax_rate_percent: float, asset_configs: AssetConfigs,
     investment_years_options, skip_time_percent_options):
 
     data = get_data()
@@ -212,8 +156,7 @@ def prepare_charts(
         for investment_years in investment_years_options:
             balances = gather_balances(
                 data, investment_strategies, 0, investment_years,
-                initial_balance, annual_contributions,
-                fees_percent, dividend_tax_rate_percent)
+                initial_balance, annual_contributions, dividend_tax_rate_percent, asset_configs)
             balances.to_csv(f'balance_{investment_years}y.csv')
             balances_all[investment_years] = balances
     else:
@@ -288,7 +231,7 @@ def prepare_charts(
             title=
                 'Likelihood of getting particular final balance adjusted to inflation if investing for different number of years. '
                 f'Initial balance is {initial_balance}, annual contributions are {annual_contributions}, '
-                f'fees are {fees_percent}%, dividend tax rate is {dividend_tax_rate_percent}%.'
+                f'dividend tax rate is {dividend_tax_rate_percent}%.'
         ) \
         .resolve_scale(x='shared') \
         .save('returns.html')

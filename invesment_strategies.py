@@ -1,140 +1,169 @@
 import math
 
-class InvestmentStrategyState:
-
-    def __init__(
-        self,
-        balance, annual_contributions,
-        fees_percent, dividend_tax_rate_percent):
-        self.requires_initialization = True
-        self.balance = balance
-        self.annual_contributions = annual_contributions
-        self.fees_percent = fees_percent
-        self.dividend_tax_rate_percent = dividend_tax_rate_percent
-        self.sp500_count = 0
-        self.vbmfx_count = 0
-        self.prev_sp500_index = None
-        self.sp500_index = None
-        self.sp500_dividend = None
-        self.prev_vbmfx_price = None
-        self.vbmfx_price = None
-        self.vbmfx_dividend = None
+cash = 'cash'
+sp500 = 'sp500'
+vbmfx = 'vbmfx'
 
 
-def sp500_strategy(state):
+class AssetResult:
 
-    if state.requires_initialization:
-        state.sp500_count = state.balance / state.sp500_index
-        return
+    price: float
+    dividends: float
 
-    # dividend
-    my_dividend = state.sp500_count * state.sp500_dividend
-    my_dividend_post_tax = my_dividend * (1 - state.dividend_tax_rate_percent / 100)
-    state.sp500_count += my_dividend_post_tax / state.sp500_index
+    def __init__(self, price: float, dividends: float) -> None:
+        self.price = price
+        self.dividends = dividends
 
-    # fees
-    state.sp500_count *= (100 - state.fees_percent) / 100
-
-    # annual contributions
-    state.sp500_count += state.annual_contributions / state.sp500_index
-
-    state.balance = state.sp500_count * state.sp500_index
+    @property
+    def is_empty(self):
+        return math.isnan(self.price) or math.isnan(self.dividends)
 
 
-def sp500_and_bonds_strategy_wo_selling(target_equities_percent):
-    def investment_strategy(state):
+class AssetResults(dict[str, AssetResult]):
+    pass
 
-        if math.isnan(state.vbmfx_price) or math.isnan(state.vbmfx_dividend):
-            sp500_strategy(state)
+
+class Position:
+
+    count: float
+
+    def __init__(self, count: float) -> None:
+        self.count = count
+
+
+class Portfolio(dict[str, Position]):
+
+    def __init__(self, initial_balance: float):
+        self.init_position(cash, initial_balance)
+
+    def cash(self):
+        return self[cash].count
+
+    def set_cash(self, value: float):
+        assert value >= -0.000001
+        self[cash].count = value
+
+    cash = property(cash, set_cash)
+
+    def init_position(self, label, value=0):
+        assert value >= 0
+        self.setdefault(label, Position(value))
+
+    def buy(self, label: str, value: float, results: AssetResults):
+        assert value >= 0
+        self.init_position(label)
+        self[label].count += value / results[label].price
+        self.cash -= value
+        assert self.cash >= -0.000001
+
+    def sell(self, label: str, value: float, results: AssetResults):
+        assert value >= 0
+        self[label].count -= value / results[label].price
+        assert self[label].count >= -0.000001
+        self.cash += value
+
+
+class InvestmentStrategy:
+
+    def start_investing(self, portfolio: Portfolio, results: AssetResults):
+        pass
+
+    def execute(self, portfolio: Portfolio, results: AssetResults):
+        raise NotImplementedError('execute')
+
+
+class Sp500Strategy(InvestmentStrategy):
+
+    def start_investing(self, portfolio: Portfolio, results: AssetResults):
+        self.execute(portfolio, results)
+
+    def execute(self, portfolio: Portfolio, results: AssetResults):
+        portfolio.buy(sp500, portfolio.cash, results)
+
+
+class Sp500AndVbmfxStrategyWoSelling(InvestmentStrategy):
+
+    target_sp500_percent: float
+
+    def __init__(self, target_sp500_percent: float):
+        self.target_sp500_percent = target_sp500_percent
+        self.sp500_strategy = Sp500Strategy()
+
+    def start_investing(self, portfolio: Portfolio, results: AssetResults):
+
+        if results[vbmfx].is_empty:
+            self.sp500_strategy.start_investing(portfolio, results)
+            portfolio.init_position(vbmfx)
             return
 
-        if state.requires_initialization:
-            state.sp500_count = state.balance * target_equities_percent / 100 / state.sp500_index
-            state.vbmfx_count = state.balance * (100 - target_equities_percent) / 100 / state.vbmfx_price
+        portfolio.buy(sp500, portfolio.cash * self.target_sp500_percent / 100, results)
+        portfolio.buy(vbmfx, portfolio.cash * (100 - self.target_sp500_percent) / 100, results)
+
+    def execute(self, portfolio: Portfolio, results: AssetResults):
+
+        if results[vbmfx].is_empty:
+            self.sp500_strategy.execute(portfolio, results)
             return
 
-        # dividend
-        my_sp500_dividend = state.sp500_count * state.sp500_dividend
-        my_sp500_dividend_post_tax = my_sp500_dividend * (1 - state.dividend_tax_rate_percent / 100)
-        state.sp500_count += my_sp500_dividend_post_tax / state.sp500_index
-        my_vbmfx_dividend = state.vbmfx_count * state.vbmfx_dividend
-        my_vbmfx_dividend_post_tax = my_vbmfx_dividend * (1 - state.dividend_tax_rate_percent / 100)
-        state.vbmfx_count += my_vbmfx_dividend_post_tax / state.sp500_index
-
-        # fees
-        state.sp500_count *= (100 - state.fees_percent) / 100
-        state.vbmfx_count *= (100 - state.fees_percent) / 100
-
-        # annual contributions
-        sp500_balance = state.sp500_count * state.sp500_index
-        vbmfx_balance = state.vbmfx_count * state.vbmfx_price
-        equities_percent = sp500_balance / (sp500_balance + vbmfx_balance) * 100
-        if equities_percent <= target_equities_percent:
-            state.sp500_count += state.annual_contributions / state.sp500_index
+        sp500_balance = portfolio[sp500].count * results[sp500].price
+        vbmfx_balance = portfolio[vbmfx].count * results[vbmfx].price
+        sp500_percent = sp500_balance / (sp500_balance + vbmfx_balance) * 100
+        if sp500_percent <= self.target_sp500_percent:
+            portfolio.buy(sp500, portfolio.cash, results)
         else:
-            state.vbmfx_count += state.annual_contributions / state.vbmfx_price
-
-        state.balance = state.sp500_count * state.sp500_index + state.vbmfx_count * state.vbmfx_price
-
-    return investment_strategy
+            portfolio.buy(vbmfx, portfolio.cash, results)
 
 
-def sp500_and_bonds_strategy_with_selling(target_equities_percent):
-    def investment_strategy(state):
+class Sp500AndVbmfxStrategyWithSelling(InvestmentStrategy):
 
-        if math.isnan(state.vbmfx_price) or math.isnan(state.vbmfx_dividend):
-            sp500_strategy(state)
+    target_sp500_percent: float
+
+    def __init__(self, target_sp500_percent: float):
+        self.target_sp500_percent = target_sp500_percent
+        self.sp500_strategy = Sp500Strategy()
+
+    def start_investing(self, portfolio: Portfolio, results: AssetResults):
+
+        if results[vbmfx].is_empty:
+            self.sp500_strategy.start_investing(portfolio, results)
+            portfolio.init_position(vbmfx)
             return
 
-        if state.requires_initialization:
-            state.sp500_count = state.balance * target_equities_percent / 100 / state.sp500_index
-            state.vbmfx_count = state.balance * (100 - target_equities_percent) / 100 / state.vbmfx_price
+        portfolio.buy(sp500, portfolio.cash * self.target_sp500_percent / 100, results)
+        portfolio.buy(vbmfx, portfolio.cash * (100 - self.target_sp500_percent) / 100, results)
+
+    def execute(self, portfolio: Portfolio, results: AssetResults):
+
+        if results[vbmfx].is_empty:
+            self.sp500_strategy.execute(portfolio, results)
             return
 
-        # dividend
-        my_sp500_dividend = state.sp500_count * state.sp500_dividend
-        my_sp500_dividend_post_tax = my_sp500_dividend * (1 - state.dividend_tax_rate_percent / 100)
-        state.sp500_count += my_sp500_dividend_post_tax / state.sp500_index
-        my_vbmfx_dividend = state.vbmfx_count * state.vbmfx_dividend
-        my_vbmfx_dividend_post_tax = my_vbmfx_dividend * (1 - state.dividend_tax_rate_percent / 100)
-        state.vbmfx_count += my_vbmfx_dividend_post_tax / state.sp500_index
-
-        # fees
-        state.sp500_count *= (100 - state.fees_percent) / 100
-        state.vbmfx_count *= (100 - state.fees_percent) / 100
-
-        # annual contributions
-        sp500_balance = state.sp500_count * state.sp500_index
-        vbmfx_balance = state.vbmfx_count * state.vbmfx_price
-        final_balance = sp500_balance + vbmfx_balance + state.annual_contributions
-        target_sp500_balance = final_balance * target_equities_percent / 100
+        sp500_balance = portfolio[sp500].count * results[sp500].price
+        vbmfx_balance = portfolio[vbmfx].count * results[vbmfx].price
+        final_balance = sp500_balance + vbmfx_balance + portfolio.cash
+        target_sp500_balance = final_balance * self.target_sp500_percent / 100
         target_vbmfx_balance = final_balance - target_sp500_balance
-
         if target_sp500_balance <= sp500_balance:
-            state.vbmfx_count += state.annual_contributions / state.vbmfx_price
+            portfolio.buy(vbmfx, portfolio.cash, results)
             sell_amount = sp500_balance - target_sp500_balance
-            state.vbmfx_count += sell_amount / state.vbmfx_price
-            state.sp500_count -= sell_amount / state.sp500_index
+            portfolio.sell(sp500, sell_amount, results)
+            portfolio.buy(vbmfx, sell_amount, results)
         elif target_vbmfx_balance <= vbmfx_balance:
-            state.sp500_count += state.annual_contributions / state.sp500_index
+            portfolio.buy(sp500, portfolio.cash, results)
             sell_amount = vbmfx_balance - target_vbmfx_balance
-            state.sp500_count += sell_amount / state.sp500_index
-            state.vbmfx_count -= sell_amount / state.vbmfx_price
+            portfolio.sell(vbmfx, sell_amount, results)
+            portfolio.buy(sp500, sell_amount, results)
         else:
-            state.vbmfx_count += (target_vbmfx_balance - vbmfx_balance) / state.vbmfx_price
-            state.sp500_count += (target_sp500_balance - sp500_balance) / state.sp500_index
-
-        state.balance = state.sp500_count * state.sp500_index + state.vbmfx_count * state.vbmfx_price
-
-        assert state.balance - final_balance < 0.000001
-
-    return investment_strategy
+            portfolio.buy(vbmfx, target_vbmfx_balance - vbmfx_balance, results)
+            portfolio.buy(sp500, target_sp500_balance - sp500_balance, results)
 
 
-def fixed_percent_strategy(percent):
-    def strategy(state):
-        if state.requires_initialization:
-            return
-        state.balance += state.annual_contributions
-        state.balance *= 1 + percent / 100
-    return strategy
+class FixedPercentStrategy(InvestmentStrategy):
+
+    percent: float
+
+    def __init__(self, percent) -> None:
+        self.percent = percent
+
+    def execute(self, portfolio: Portfolio, results: AssetResults):
+        portfolio.cash *= 1 + self.percent / 100

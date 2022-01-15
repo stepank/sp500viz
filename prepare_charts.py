@@ -225,6 +225,8 @@ def prepare_charts(
                     tooltip=['final_balance:Q', 'percent_of_years_with_lower_balance:Q', 'investment_strategy']
                 ).add_selection(
                     selection
+                ).properties(
+                    width=600
                 )
 
             row.append(balance_chart)

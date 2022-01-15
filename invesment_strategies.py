@@ -75,18 +75,30 @@ class InvestmentStrategy:
 class Sp500Strategy(InvestmentStrategy):
 
     def start_investing(self, portfolio: Portfolio, results: AssetResults):
-        self.execute(portfolio, results)
+        self.execute(0, 100, portfolio, results)
 
-    def execute(self, portfolio: Portfolio, results: AssetResults):
+    def execute(self, year_index: int, investment_years: int, portfolio: Portfolio, results: AssetResults):
         portfolio.buy(sp500, portfolio.cash, results)
+
+
+def fixed_target_sp500_percent(target_sp500_percent: float):
+    def get_target_sp500_percent(year_index, investment_years):
+        return target_sp500_percent
+    return get_target_sp500_percent
+
+
+def linearly_changing_target_sp500_percent(target_sp500_percent_start: float, target_sp500_percent_end: float):
+    def get_target_sp500_percent(year_index, investment_years):
+        return \
+            target_sp500_percent_start \
+            + (target_sp500_percent_end - target_sp500_percent_start) * (year_index / investment_years)
+    return get_target_sp500_percent
 
 
 class Sp500AndVbmfxStrategyWoSelling(InvestmentStrategy):
 
-    target_sp500_percent: float
-
-    def __init__(self, target_sp500_percent: float):
-        self.target_sp500_percent = target_sp500_percent
+    def __init__(self, get_target_sp500_percent):
+        self.get_target_sp500_percent = get_target_sp500_percent
         self.sp500_strategy = Sp500Strategy()
 
     def start_investing(self, portfolio: Portfolio, results: AssetResults):
@@ -96,19 +108,21 @@ class Sp500AndVbmfxStrategyWoSelling(InvestmentStrategy):
             portfolio.init_position(vbmfx)
             return
 
-        portfolio.buy(sp500, portfolio.cash * self.target_sp500_percent / 100, results)
-        portfolio.buy(vbmfx, portfolio.cash * (100 - self.target_sp500_percent) / 100, results)
+        target_sp500_percent = self.get_target_sp500_percent(0, 100)
+        portfolio.buy(sp500, portfolio.cash * target_sp500_percent / 100, results)
+        portfolio.buy(vbmfx, portfolio.cash * (100 - target_sp500_percent) / 100, results)
 
-    def execute(self, portfolio: Portfolio, results: AssetResults):
+    def execute(self, year_index: int, investment_years: int, portfolio: Portfolio, results: AssetResults,):
 
         if results[vbmfx].is_empty:
-            self.sp500_strategy.execute(portfolio, results)
+            self.sp500_strategy.execute(0, 100, portfolio, results)
             return
 
         sp500_balance = portfolio[sp500].count * results[sp500].price
         vbmfx_balance = portfolio[vbmfx].count * results[vbmfx].price
         sp500_percent = sp500_balance / (sp500_balance + vbmfx_balance) * 100
-        if sp500_percent <= self.target_sp500_percent:
+        target_sp500_percent = self.get_target_sp500_percent(year_index, investment_years)
+        if sp500_percent <= target_sp500_percent:
             portfolio.buy(sp500, portfolio.cash, results)
         else:
             portfolio.buy(vbmfx, portfolio.cash, results)
@@ -116,10 +130,8 @@ class Sp500AndVbmfxStrategyWoSelling(InvestmentStrategy):
 
 class Sp500AndVbmfxStrategyWithSelling(InvestmentStrategy):
 
-    target_sp500_percent: float
-
-    def __init__(self, target_sp500_percent: float):
-        self.target_sp500_percent = target_sp500_percent
+    def __init__(self, get_target_sp500_percent):
+        self.get_target_sp500_percent = get_target_sp500_percent
         self.sp500_strategy = Sp500Strategy()
 
     def start_investing(self, portfolio: Portfolio, results: AssetResults):
@@ -129,19 +141,21 @@ class Sp500AndVbmfxStrategyWithSelling(InvestmentStrategy):
             portfolio.init_position(vbmfx)
             return
 
-        portfolio.buy(sp500, portfolio.cash * self.target_sp500_percent / 100, results)
-        portfolio.buy(vbmfx, portfolio.cash * (100 - self.target_sp500_percent) / 100, results)
+        target_sp500_percent = self.get_target_sp500_percent(0, 100)
+        portfolio.buy(sp500, portfolio.cash * target_sp500_percent / 100, results)
+        portfolio.buy(vbmfx, portfolio.cash * (100 - target_sp500_percent) / 100, results)
 
-    def execute(self, portfolio: Portfolio, results: AssetResults):
+    def execute(self, year_index: int, investment_years: int, portfolio: Portfolio, results: AssetResults):
 
         if results[vbmfx].is_empty:
-            self.sp500_strategy.execute(portfolio, results)
+            self.sp500_strategy.execute(0, 100, portfolio, results)
             return
 
         sp500_balance = portfolio[sp500].count * results[sp500].price
         vbmfx_balance = portfolio[vbmfx].count * results[vbmfx].price
         final_balance = sp500_balance + vbmfx_balance + portfolio.cash
-        target_sp500_balance = final_balance * self.target_sp500_percent / 100
+        target_sp500_percent = self.get_target_sp500_percent(year_index, investment_years)
+        target_sp500_balance = final_balance * target_sp500_percent / 100
         target_vbmfx_balance = final_balance - target_sp500_balance
         if target_sp500_balance <= sp500_balance:
             portfolio.buy(vbmfx, portfolio.cash, results)
@@ -165,5 +179,5 @@ class FixedPercentStrategy(InvestmentStrategy):
     def __init__(self, percent) -> None:
         self.percent = percent
 
-    def execute(self, portfolio: Portfolio, results: AssetResults):
+    def execute(self, year_index: int, investment_years: int, portfolio: Portfolio, results: AssetResults):
         portfolio.cash *= 1 + self.percent / 100

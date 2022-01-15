@@ -64,7 +64,7 @@ class SimulationRunner:
                 self._collect_dividends_and_pay_devidend_taxes(portfolio, asset_results)
                 self._pay_all_fees(portfolio)
                 portfolio.cash += self.annual_contributions
-                investment_strategy.execute(portfolio, asset_results)
+                investment_strategy.execute(year_index, investment_years, portfolio, asset_results)
                 self._apply_inflation(portfolio, prev_cpi / cpi)
 
             prev_cpi = cpi

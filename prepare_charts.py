@@ -168,6 +168,16 @@ def prepare_charts(
 
     print('preparing charts')
 
+    color = alt.Color('investment_strategy', title='Investment strategy')
+
+    selection = alt.selection_multi(
+        bind='legend',
+        fields=['investment_strategy'])
+    opacity = alt.condition(
+        selection,
+        alt.value(1),
+        alt.value(0.15))
+
     for start_date in start_date_options:
 
         print(f'  processing preparing charts {start_date}')
@@ -181,8 +191,6 @@ def prepare_charts(
 
             if balances_sliced.shape[0] == 0:
                 continue
-
-            color = alt.Color('investment_strategy', title='Investment strategy')
 
             balance_chart = alt.Chart(balances_sliced) \
                 .mark_line(
@@ -208,12 +216,15 @@ def prepare_charts(
                         scale=alt.Scale(domain=[0, 100])
                     ),
                     color=color,
+                    opacity=opacity,
                     strokeWidth=alt.condition(
                         "datum.investment_strategy == 'sp500'",
                         alt.value(2),
                         alt.value(1)
                     ),
                     tooltip=['final_balance:Q', 'percent_of_years_with_lower_balance:Q', 'investment_strategy']
+                ).add_selection(
+                    selection
                 )
 
             row.append(balance_chart)

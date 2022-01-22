@@ -31,11 +31,14 @@ The simulation can be configured by adjusting parameters in the `parameters.py` 
 
 1. `initial_balance` is the initial lump sum investment. The default is `100`. The currency is always USD.
 1. `annual_contributions` is how much you contribute per year. The contirbutions are always of the same size and are applied once per year. The conributions are adjusted for inflation, so if you set it to let's say `1000`, it would correspond to later contributions usually being nominally higher (save for the periods of deflation) than the actual `1000`. The default is `20`.
-1. `fees_percent` is the fees of the fund or how much the fund charges per year. The default is `0.07%`.
 1. `dividend_tax_rate_percent` is how much taxes you have to pay every year on the dividends. The default is `15%`.
 1. `investment_years_options` is a list of options of the investment horizon. The simulation will be run for every option and the charts will include one column per option. The default is `[20, 25, 30]`, which means the simulation will be run for being invested for `20`, `25`, and `30` years.
 1. `skip_time_percent_options` is a list of % of how much data from the beginning to not take into account for the simulation. The simulation will be run for every option and the charts will include one row per option. The default is `[0, 20, 40, 60, 80]`, which correspods to running the simulation starting from the following dates: Jan 1871, Jun 1900, Nov 1929, May 1959, Oct 1988.
 1. `investment_strategies` is a list of investment strategies to compare.
+1. `asset_configs` allows configuring properties of assets:
+    - `fees_percent` is the fees of the fund or how much (in %) the fund charges per year.
+    - `accumulate_dividens` determines how dividends are handled. If it is set to `True`, all dividens of this asset are re-invested in the asset itself. If the parameter is set to `False`, the dividens are paid as cash, which can then be used by investment strategies.
+
 
 ## Credits
 

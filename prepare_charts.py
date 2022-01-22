@@ -226,7 +226,7 @@ def prepare_charts(
                 ).add_selection(
                     selection
                 ).properties(
-                    width=600
+                    width=1200
                 )
 
             row.append(balance_chart)

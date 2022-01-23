@@ -1,5 +1,8 @@
 import math
 
+from datetime import datetime, timedelta
+from typing import Optional
+
 cash = 'cash'
 sp500 = 'sp500'
 vbmfx = 'vbmfx'
@@ -32,6 +35,52 @@ class Position:
 
     def __init__(self, count: float) -> None:
         self.count = count
+
+    def get_dividends(self, portfoliresult: AssetResult) -> float:
+        raise NotImplementedError('pay_dividends')
+
+    def get_value(self, result: AssetResult) -> float:
+        raise NotImplementedError('get_value')
+
+    def get_maturity(self, this_date: datetime) -> Optional[float]:
+        raise NotImplementedError('get_maturity')
+
+
+class EquityPosition(Position):
+
+    def get_dividends(self, result: AssetResult) -> float:
+        return self.count * result.dividends
+
+    def get_value(self, result: AssetResult) -> float:
+        return self.count * result.price
+
+    def get_maturity(self, this_date: datetime) -> Optional[float]:
+        return None
+
+
+class BondPosition(Position):
+
+    start_date: datetime
+    marurity_date: datetime
+    rate_percet: float
+
+    def __init__(self, count: float, start_date: datetime, time_to_maturity: timedelta, rate_percent: float) -> None:
+        super().__init__(count)
+        self.start_date = start_date
+        self.marurity_date = start_date + time_to_maturity
+        self.time_to_maturity = time_to_maturity
+        self.rate_percent = rate_percent
+
+    def get_dividends(self, result: AssetResult) -> float:
+        return self.count * self.rate_percent / 100
+
+    def get_value(self, result: AssetResult) -> float:
+        raise NotImplementedError('get_value')
+
+    def get_maturity(self, this_date: datetime) -> Optional[float]:
+        if this_date >= self.marurity_date:
+            return self.count
+        return None
 
 
 class Portfolio(dict[str, Position]):

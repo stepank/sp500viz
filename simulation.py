@@ -33,7 +33,6 @@ class SimulationRunner:
 
     def run_simulation(self, data, skip_rows: int, investment_years: int, investment_strategy: InvestmentStrategy):
 
-        prev_cpi = None
         asset_results = AssetResults()
 
         portfolio = Portfolio(self.initial_balance)
@@ -53,6 +52,7 @@ class SimulationRunner:
 
             if year_index == 0:
                 first_date = this_date
+                first_cpi = cpi
 
             if this_date.month != first_date.month:
                 raise Exception(f'Current month ({this_date}) is not the same as the first month ({first_date})')
@@ -62,11 +62,10 @@ class SimulationRunner:
             else:
                 self._collect_dividends_and_pay_devidend_taxes(portfolio, asset_results)
                 self._pay_all_fees(portfolio)
-                portfolio.cash += self.annual_contributions
+                portfolio.cash += self.annual_contributions * cpi / first_cpi
                 investment_strategy.execute(year_index, investment_years, portfolio, asset_results)
-                self._apply_inflation(portfolio, prev_cpi / cpi)
 
-            prev_cpi = cpi
+        self._apply_inflation(portfolio, first_cpi / cpi)
 
         return dict(first_date=first_date, final_balance=self._summarize(portfolio, asset_results))
 

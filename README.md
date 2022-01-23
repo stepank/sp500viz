@@ -17,7 +17,7 @@ Run `Bootstrap.ps1` to create a Python virtual environment in the root of the pr
 
 Just run `run.ps1`. It will activate the virtual environment and run the simulation. See below for configuration options.
 
-The simulation will do roughly the following. For every month starting from different dates, it will calculate the final balance adjusted to inflation for a portfolio fully allocated to an SP500 index fund for a few years starting from that month.
+The simulation will do roughly the following. For every month starting from different dates, it will calculate the final balance adjusted to inflation for different configured portfolios allocated for the given number of years starting from that month.
 
 The output is a greed of charts in the `returns.html` file. Each chart shows the likelihood (based on historical data) of reaching certain balance depending on how long the portfolio is kept invested. The axes are:
 * X - final balance,
@@ -30,7 +30,7 @@ The lines on the chart represent different investment strategies. Apart from oth
 The simulation can be configured by adjusting parameters in the `parameters.py` file. The parameters are:
 
 1. `initial_balance` is the initial lump sum investment. The default is `100`. The currency is always USD.
-1. `annual_contributions` is how much you contribute per year. The contirbutions are always of the same size and are applied once per year. The conributions are adjusted for inflation, so if you set it to let's say `1000`, it would correspond to later contributions usually being nominally higher (save for the periods of deflation) than the actual `1000`. The default is `20`.
+1. `annual_contributions` is how much you contribute every year year. All contirbutions are applied once per year. They are of the same size, but adjusted for inflation. To demonstrate what that means, consider the followign example. Suppose you set `annual_contributions` to `1000` and CPI in the beginning is `10`. If CPI later changes to let's say 12, the contributions for this later year will be `1000 / 10 * 12` or `1200`. The default is `20`.
 1. `dividend_tax_rate_percent` is how much taxes you have to pay every year on the dividends. The default is `15%`.
 1. `investment_years_options` is a list of options of the investment horizon. The simulation will be run for every option and the charts will include one column per option. The default is `[20, 25, 30]`, which means the simulation will be run for being invested for `20`, `25`, and `30` years.
 1. `skip_time_percent_options` is a list of % of how much data from the beginning to not take into account for the simulation. The simulation will be run for every option and the charts will include one row per option. The default is `[0, 20, 40, 60, 80]`, which correspods to running the simulation starting from the following dates: Jan 1871, Jun 1900, Nov 1929, May 1959, Oct 1988.

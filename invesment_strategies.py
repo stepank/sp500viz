@@ -20,7 +20,10 @@ class AssetResult:
 
 
 class AssetResults(dict[str, AssetResult]):
-    pass
+
+    def __init__(self, **kwargs) -> None:
+        kwargs.update({cash: AssetResult(1, 0)})
+        super().__init__(kwargs)
 
 
 class Position:
@@ -36,14 +39,14 @@ class Portfolio(dict[str, Position]):
     def __init__(self, initial_balance: float):
         self.init_position(cash, initial_balance)
 
-    def cash(self):
+    def _cash(self) -> float:
         return self[cash].count
 
-    def set_cash(self, value: float):
+    def _set_cash(self, value: float) -> None:
         assert value >= -0.000001
         self[cash].count = value
 
-    cash = property(cash, set_cash)
+    cash = property(_cash, _set_cash)
 
     def init_position(self, label, value=0):
         assert value >= 0
@@ -65,19 +68,19 @@ class Portfolio(dict[str, Position]):
 
 class InvestmentStrategy:
 
-    def start_investing(self, portfolio: Portfolio, results: AssetResults):
+    def start_investing(self, portfolio: Portfolio, results: AssetResults) -> None:
         pass
 
-    def execute(self, portfolio: Portfolio, results: AssetResults):
+    def execute(self, year_index: int, investment_years: int, portfolio: Portfolio, results: AssetResults) -> None:
         raise NotImplementedError('execute')
 
 
 class Sp500Strategy(InvestmentStrategy):
 
-    def start_investing(self, portfolio: Portfolio, results: AssetResults):
+    def start_investing(self, portfolio: Portfolio, results: AssetResults) -> None:
         self.execute(0, 100, portfolio, results)
 
-    def execute(self, year_index: int, investment_years: int, portfolio: Portfolio, results: AssetResults):
+    def execute(self, year_index: int, investment_years: int, portfolio: Portfolio, results: AssetResults) -> None:
         portfolio.buy(sp500, portfolio.cash, results)
 
 
@@ -101,7 +104,7 @@ class Sp500AndVbmfxStrategyWoSelling(InvestmentStrategy):
         self.get_target_sp500_percent = get_target_sp500_percent
         self.sp500_strategy = Sp500Strategy()
 
-    def start_investing(self, portfolio: Portfolio, results: AssetResults):
+    def start_investing(self, portfolio: Portfolio, results: AssetResults) -> None:
 
         if results[vbmfx].is_empty:
             self.sp500_strategy.start_investing(portfolio, results)
@@ -112,7 +115,7 @@ class Sp500AndVbmfxStrategyWoSelling(InvestmentStrategy):
         portfolio.buy(sp500, portfolio.cash * target_sp500_percent / 100, results)
         portfolio.buy(vbmfx, portfolio.cash * (100 - target_sp500_percent) / 100, results)
 
-    def execute(self, year_index: int, investment_years: int, portfolio: Portfolio, results: AssetResults,):
+    def execute(self, year_index: int, investment_years: int, portfolio: Portfolio, results: AssetResults) -> None:
 
         if results[vbmfx].is_empty:
             self.sp500_strategy.execute(0, 100, portfolio, results)
@@ -134,7 +137,7 @@ class Sp500AndVbmfxStrategyWithSelling(InvestmentStrategy):
         self.get_target_sp500_percent = get_target_sp500_percent
         self.sp500_strategy = Sp500Strategy()
 
-    def start_investing(self, portfolio: Portfolio, results: AssetResults):
+    def start_investing(self, portfolio: Portfolio, results: AssetResults) -> None:
 
         if results[vbmfx].is_empty:
             self.sp500_strategy.start_investing(portfolio, results)
@@ -145,7 +148,7 @@ class Sp500AndVbmfxStrategyWithSelling(InvestmentStrategy):
         portfolio.buy(sp500, portfolio.cash * target_sp500_percent / 100, results)
         portfolio.buy(vbmfx, portfolio.cash * (100 - target_sp500_percent) / 100, results)
 
-    def execute(self, year_index: int, investment_years: int, portfolio: Portfolio, results: AssetResults):
+    def execute(self, year_index: int, investment_years: int, portfolio: Portfolio, results: AssetResults) -> None:
 
         if results[vbmfx].is_empty:
             self.sp500_strategy.execute(0, 100, portfolio, results)
@@ -179,5 +182,5 @@ class FixedPercentStrategy(InvestmentStrategy):
     def __init__(self, percent) -> None:
         self.percent = percent
 
-    def execute(self, year_index: int, investment_years: int, portfolio: Portfolio, results: AssetResults):
+    def execute(self, year_index: int, investment_years: int, portfolio: Portfolio, results: AssetResults) -> None:
         portfolio.cash *= 1 + self.percent / 100

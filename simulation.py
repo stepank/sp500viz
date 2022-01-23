@@ -34,7 +34,7 @@ class SimulationRunner:
     def run_simulation(self, data, skip_rows: int, investment_years: int, investment_strategy: InvestmentStrategy):
 
         prev_cpi = None
-        asset_results = None
+        asset_results = AssetResults()
 
         portfolio = Portfolio(self.initial_balance)
 
@@ -46,11 +46,10 @@ class SimulationRunner:
             this_date = row['date']
             cpi = row['cpi']
 
-            asset_results = AssetResults({
-                cash: AssetResult(1, 0),
-                sp500: AssetResult(row['sp500_index'], row['sp500_dividend']),
-                vbmfx: AssetResult(row['vbmfx_price'], row['vbmfx_dividend']),
-            })
+            asset_results = AssetResults(
+                sp500=AssetResult(row['sp500_index'], row['sp500_dividend']),
+                vbmfx=AssetResult(row['vbmfx_price'], row['vbmfx_dividend']),
+            )
 
             if year_index == 0:
                 first_date = this_date
@@ -71,7 +70,7 @@ class SimulationRunner:
 
         return dict(first_date=first_date, final_balance=self._summarize(portfolio, asset_results))
 
-    def _collect_dividends_and_pay_devidend_taxes(self, portfolio: Portfolio, results: AssetResults) -> float:
+    def _collect_dividends_and_pay_devidend_taxes(self, portfolio: Portfolio, results: AssetResults) -> None:
 
         for label, position in portfolio.items():
             result = results.get(label)
@@ -79,21 +78,21 @@ class SimulationRunner:
                 dividends = position.count * result.dividends
                 dividends_post_tax = dividends * (100 - self.dividend_tax_rate_percent) / 100
                 portfolio.cash += dividends_post_tax
-                config = self.asset_configs.get(label)
+                config = self.asset_configs[label]
                 if config.accumulate_dividens:
                     portfolio.buy(label, dividends_post_tax, results)
 
-    def _pay_all_fees(self, portfolio: Portfolio):
+    def _pay_all_fees(self, portfolio: Portfolio) -> None:
         for label, position in portfolio.items():
             position.count *= (100 - self.asset_configs[label].fees_percent) / 100
 
-    def _apply_inflation(self, portfolio: Portfolio, inflation_q):
+    def _apply_inflation(self, portfolio: Portfolio, inflation_q) -> None:
         for position in portfolio.values():
            position.count *= inflation_q
 
     @staticmethod
     def _summarize(portfolio: Portfolio, results: AssetResults) -> float:
-        balance = 0
+        balance = 0.0
         for label, position in portfolio.items():
             result = results.get(label)
             if result and not result.is_empty:

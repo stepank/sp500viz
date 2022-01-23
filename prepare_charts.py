@@ -135,7 +135,7 @@ def gather_balances(
 def prepare_charts(
     investment_strategies,
     initial_balance: float, annual_contributions: float, dividend_tax_rate_percent: float, asset_configs: AssetConfigs,
-    investment_years_options, skip_time_percent_options):
+    investment_years_options: list[int], skip_time_percent_options: list[int]):
 
     data = get_data()
     data.to_csv(f'main_data.csv')
@@ -249,7 +249,6 @@ def prepare_charts(
         .resolve_scale(x='shared') \
         .save('returns.html')
 
-
 prepare_charts(
-    **parameters.parameters
+    **parameters.parameters  # type: ignore
 )

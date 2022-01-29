@@ -3,8 +3,10 @@ from simulation import AssetConfigs, AssetConfig
 
 investment_strategies = [
     (Sp500Strategy(), 'sp500'),
+    (Sp500AndTb10yStrategyWoSelling(fixed_target_sp500_percent(70)), 'sp500 & tb10y 70/30 w/o selling'),
     (Sp500AndVbmfxStrategyWoSelling(fixed_target_sp500_percent(70)), 'sp500 & vbmfx 70/30 w/o selling'),
     (Sp500AndVbmfxStrategyWithSelling(fixed_target_sp500_percent(70)), 'sp500 & vbmfx 70/30 with selling, 0% capital gains tax'),
+    (Sp500AndTb10yStrategyWoSelling(linearly_changing_target_sp500_percent(100, 70)), 'sp500 & tb10y 100/0 -> 70/30 w/o selling'),
     (Sp500AndVbmfxStrategyWoSelling(linearly_changing_target_sp500_percent(100, 70)), 'sp500 & vbmfx 100/0 -> 70/30 w/o selling'),
     (Sp500AndVbmfxStrategyWithSelling(linearly_changing_target_sp500_percent(100, 70)), 'sp500 & vbmfx 100/0 -> 70/30 with selling, 0% capital gains tax'),
     (FixedPercentStrategy(0), 'cash only'),
@@ -23,5 +25,6 @@ parameters = dict(
     asset_configs=AssetConfigs({
         sp500: AssetConfig(fees_percent=0.07, accumulate_dividens=False),
         vbmfx: AssetConfig(fees_percent=0.15, accumulate_dividens=False),
+        tb10y: AssetConfig(fees_percent=0.0, accumulate_dividens=False),
     })
 )

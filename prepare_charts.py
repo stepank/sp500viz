@@ -61,6 +61,7 @@ def get_data():
 
     column_date = []
     column_cpi = []
+    column_bonds_10y_rate_percent = []
     column_sp500_index = []
     column_sp500_dividend = []
     column_vbmfx_price = []
@@ -86,12 +87,14 @@ def get_data():
             index_str = row['SP500']
             dividend_str = row['Dividend']
             cpi_str = row['Consumer Price Index']
+            long_interest_rate_str = row['Long Interest Rate']
 
             if not index_str or not dividend_str or not cpi_str:
                 continue
 
             column_date.append(pd.to_datetime(this_date))
             column_cpi.append(float(cpi_str))
+            column_bonds_10y_rate_percent.append(float(long_interest_rate_str))
 
             column_sp500_index.append(float(index_str))
             column_sp500_dividend.append(float(dividend_str))
@@ -107,6 +110,7 @@ def get_data():
     return pd.DataFrame({
         'date': column_date,
         'cpi': column_cpi,
+        'bonds_10y_rate_percent': column_bonds_10y_rate_percent,
         'sp500_index': column_sp500_index,
         'sp500_dividend': column_sp500_dividend,
         'vbmfx_price': column_vbmfx_price,

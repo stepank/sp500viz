@@ -194,7 +194,18 @@ class Tb10yPosition(Position):
         self.bonds.append(Bond(value, result.dividends, this_date, timedelta(days=365.25 * 10)))
 
     def sell(self, this_date: datetime, value: float, result: AssetResult) -> None:
-        raise NotImplementedError('sell')
+        sold_value = 0.0
+        while sold_value < value:
+            first_bond = self.bonds[0]
+            first_bond_value = first_bond.get_value(this_date, result)
+            remaining_to_sell = value - sold_value
+            if first_bond_value < remaining_to_sell:
+                self.bonds.remove(first_bond)
+                sold_value += first_bond_value
+            else:
+                first_bond.face_value *= (1 - remaining_to_sell / first_bond_value)
+                sold_value += remaining_to_sell
+                assert first_bond.get_value(this_date, result) + remaining_to_sell - first_bond_value < 0.000001
 
     def pay_fees(self) -> None:
         pass
@@ -354,6 +365,38 @@ class Sp500AndVbmfxStrategyWithSelling(InvestmentStrategy):
             portfolio.buy(this_date, sp500, sell_amount, results)
         else:
             portfolio.buy(this_date, vbmfx, target_vbmfx_balance - vbmfx_balance, results)
+            portfolio.buy(this_date, sp500, target_sp500_balance - sp500_balance, results)
+
+
+class Sp500AndTb10yStrategyWithSelling(InvestmentStrategy):
+
+    def __init__(self, get_target_sp500_percent):
+        self.get_target_sp500_percent = get_target_sp500_percent
+
+    def start_investing(self, this_date: datetime, portfolio: Portfolio, results: AssetResults) -> None:
+        target_sp500_percent = self.get_target_sp500_percent(0, 100)
+        portfolio.buy(this_date, sp500, portfolio.cash * target_sp500_percent / 100, results)
+        portfolio.buy(this_date, tb10y, portfolio.cash, results)
+
+    def execute(self, this_date: datetime, year_index: int, investment_years: int, portfolio: Portfolio, results: AssetResults) -> None:
+        sp500_balance = portfolio[sp500].get_value(this_date, results[sp500])
+        tb10y_balance = portfolio[tb10y].get_value(this_date, results[tb10y])
+        final_balance = sp500_balance + tb10y_balance + portfolio.cash
+        target_sp500_percent = self.get_target_sp500_percent(year_index, investment_years)
+        target_sp500_balance = final_balance * target_sp500_percent / 100
+        target_tb10y_balance = final_balance - target_sp500_balance
+        if target_sp500_balance <= sp500_balance:
+            portfolio.buy(this_date, tb10y, portfolio.cash, results)
+            sell_amount = sp500_balance - target_sp500_balance
+            portfolio.sell(this_date, sp500, sell_amount, results)
+            portfolio.buy(this_date, tb10y, sell_amount, results)
+        elif target_tb10y_balance <= tb10y_balance:
+            portfolio.buy(this_date, sp500, portfolio.cash, results)
+            sell_amount = tb10y_balance - target_tb10y_balance
+            portfolio.sell(this_date, tb10y, sell_amount, results)
+            portfolio.buy(this_date, sp500, sell_amount, results)
+        else:
+            portfolio.buy(this_date, tb10y, target_tb10y_balance - tb10y_balance, results)
             portfolio.buy(this_date, sp500, target_sp500_balance - sp500_balance, results)
 
 

@@ -1,6 +1,7 @@
 import altair as alt
 import csv
 import datetime as dt
+import itertools as it
 import pandas as pd
 import parameters
 
@@ -58,6 +59,7 @@ def get_data():
             vbmfx_div_yields.setdefault(this_date_str, div_yield)
 
     sp500_data_path = 'data\\sp500\\data\\data_csv.csv'
+    sp500_data_path_new = 'data\\sp500_new\\data.csv'
 
     column_date = []
     column_cpi = []
@@ -70,52 +72,56 @@ def get_data():
     print('getting data')
 
     with open(sp500_data_path, newline='', encoding='utf-8-sig') as csvfile:
+        with open(sp500_data_path_new, newline='', encoding='utf-8-sig') as csvfile_new:
 
-        csvreader = csv.DictReader(csvfile)
+            csvreader = csv.DictReader(csvfile)
+            csvreader_new = csv.DictReader(csvfile_new)
 
-        for row in csvreader:
+            for row in it.chain(
+                (row for row in csvreader if row['Date'] <= '2017-12-01'),
+                (row for row in csvreader_new if row['Date'] > '2017-12-01')):
 
-            this_date_str = row['Date']
+                this_date_str = row['Date']
 
-            date_parts = this_date_str.split('-')
-            year = date_parts[0]
-            month = date_parts[1]
-            day = date_parts[2]
+                date_parts = this_date_str.split('-')
+                year = date_parts[0]
+                month = date_parts[1]
+                day = date_parts[2]
 
-            this_date = dt.date(year=int(year), month=int(month), day=int(day))
+                this_date = dt.date(year=int(year), month=int(month), day=int(day))
 
-            index_str = row['SP500']
-            dividend_str = row['Dividend']
-            cpi_str = row['Consumer Price Index']
-            long_interest_rate_str = row['Long Interest Rate']
+                index_str = row['SP500']
+                dividend_str = row['Dividend']
+                cpi_str = row['Consumer Price Index']
+                long_interest_rate_str = row['Long Interest Rate']
 
-            if not index_str or not dividend_str or not cpi_str:
-                continue
+                if not index_str or not dividend_str or not cpi_str:
+                    continue
 
-            column_date.append(pd.to_datetime(this_date))
-            column_cpi.append(float(cpi_str))
-            column_bonds_10y_rate_percent.append(float(long_interest_rate_str))
+                column_date.append(pd.to_datetime(this_date))
+                column_cpi.append(float(cpi_str))
+                column_bonds_10y_rate_percent.append(float(long_interest_rate_str))
 
-            column_sp500_index.append(float(index_str))
-            column_sp500_dividend.append(float(dividend_str))
+                column_sp500_index.append(float(index_str))
+                column_sp500_dividend.append(float(dividend_str))
 
-            vbmfx_price = vbmfx_prices.get(this_date_str)
-            vbmfx_rate = vbmfx_div_yields.get(this_date_str)
-            column_vbmfx_price.append(vbmfx_price)
-            if vbmfx_price and vbmfx_rate:
-                column_vbmfx_dividend.append(vbmfx_price * vbmfx_rate / 100)
-            else:
-                column_vbmfx_dividend.append(None)
+                vbmfx_price = vbmfx_prices.get(this_date_str)
+                vbmfx_rate = vbmfx_div_yields.get(this_date_str)
+                column_vbmfx_price.append(vbmfx_price)
+                if vbmfx_price and vbmfx_rate:
+                    column_vbmfx_dividend.append(vbmfx_price * vbmfx_rate / 100)
+                else:
+                    column_vbmfx_dividend.append(None)
 
-    return pd.DataFrame({
-        'date': column_date,
-        'cpi': column_cpi,
-        'bonds_10y_rate_percent': column_bonds_10y_rate_percent,
-        'sp500_index': column_sp500_index,
-        'sp500_dividend': column_sp500_dividend,
-        'vbmfx_price': column_vbmfx_price,
-        'vbmfx_dividend': column_vbmfx_dividend,
-    })
+        return pd.DataFrame({
+            'date': column_date,
+            'cpi': column_cpi,
+            'bonds_10y_rate_percent': column_bonds_10y_rate_percent,
+            'sp500_index': column_sp500_index,
+            'sp500_dividend': column_sp500_dividend,
+            'vbmfx_price': column_vbmfx_price,
+            'vbmfx_dividend': column_vbmfx_dividend,
+        })
 
 
 def gather_balances(
